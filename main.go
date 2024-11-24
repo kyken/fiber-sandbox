@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	user "github.com/kyken/fiber-sandbox/handler"
@@ -47,6 +48,9 @@ func main() {
 		Expiration:   1 * time.Hour,
 		CacheControl: true,
 	}))
+
+	// CORS
+	app.Use(cors.New())
 
 	// Logging Request ID
 	app.Use(requestid.New())

@@ -1,0 +1,6 @@
+
+services:
+  k6:
+    image: grafana/k6
+    volumes:
+      - ./loadTest.js:/scripts/loadTest.js
