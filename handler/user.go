@@ -2,9 +2,13 @@ package user
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	fiberlog "github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/storage/redis/v3"
 	"github.com/kyken/fiber-sandbox/lib/db"
 	"github.com/kyken/fiber-sandbox/lib/model"
 )
@@ -20,14 +24,31 @@ type User struct {
 
 type UserHandler struct {
 	db db.Database
+	cache redis.Storage
 }
 
-func NewUserHandler(db db.Database) *UserHandler {
-	return &UserHandler{db: db}
+func deleteCache(partKey string, cache redis.Storage) error {
+	keys, err := cache.Keys()  // すべてのキーを取得
+	if err != nil {
+		return err
+	}
+	
+	for _, key := range keys {
+		targetKey := string(key)
+		if strings.Contains(targetKey, partKey) {
+			_ = cache.Delete(string(key))
+		}
+	}
+	return nil
+}
+
+func NewUserHandler(db db.Database, cache redis.Storage) *UserHandler {
+	return &UserHandler{db: db, cache: cache}
 }
 
 // GET /users
 func (h *UserHandler) GetUsersHandler(c *fiber.Ctx) error {
+	fiberlog.Debug("call handler")
 	users := make([]User, 0)
 
 	findAllSql := "select id, username, email, created_at from users"
@@ -63,6 +84,7 @@ func (h *UserHandler) GetUserHandler(c *fiber.Ctx) error {
 // PUT /user
 func (h *UserHandler) PutUserHandler(c *fiber.Ctx) error {
 	user := new(User)
+	// 配列の要素である場合もBodyParser でOK
 	if err := c.BodyParser(user); err != nil {
 		return err
 	}
@@ -78,6 +100,8 @@ func (h *UserHandler) PutUserHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get inserted ID")
 	}
+	// users のキャッシュ削除が必要
+	deleteCache("users", h.cache)
 	return c.Status(200).JSON(id)
 }
 
@@ -99,6 +123,8 @@ func (h *UserHandler) PostUserHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	deleteCache("users", h.cache)
+	deleteCache(fmt.Sprintf("/user/%s", string(id)), h.cache)
 	return c.Status(200).JSON("ok")
 }
 
@@ -118,5 +144,7 @@ func (h *UserHandler) DeleteUserHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	deleteCache("users", h.cache)
+	deleteCache(fmt.Sprintf("/user/%s", string(id)), h.cache)
 	return c.Status(200).JSON("ok")
 }

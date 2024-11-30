@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mysql:
@@ -12,19 +12,24 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ./mysql/init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
     networks:
       - app-network
     deploy:
       resources:
         limits:
           memory: 1G
-
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+    command: redis-server --appendonly yes # データ永続化を有効化
+    environment:
+      - TZ=Asia/Tokyo
+    networks:
+      - app-network
 
 networks:
   app-network:

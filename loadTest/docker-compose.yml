@@ -1,6 +1,6 @@
-
 services:
   k6:
     image: grafana/k6
+    network_mode: "host"
     volumes:
       - ./loadTest.js:/scripts/loadTest.js
